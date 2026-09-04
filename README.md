@@ -5,7 +5,7 @@
 
 ## The three files
 
-**Referral-log.html** — the working tool, and the one to use day to day. Two views: *Sheet* shows the A4 page as it will print; *Entry* stacks one referral per card for phones and tablets. It switches automatically by screen size and can be toggled either way. Also has a light/dark toggle for screen comfort, which never affects printing. Print with the button or Ctrl+P; Export PDF routes through the same dialogue with the destination set to "Save as PDF".
+**index.html** — the working tool, and the one to use day to day. Two views: *Sheet* shows the A4 page as it will print; *Entry* stacks one referral per card for phones and tablets. It switches automatically by screen size and can be toggled either way. Also has a light/dark toggle for screen comfort, which never affects printing. Print with the button or Ctrl+P; Export PDF routes through the same dialogue with the destination set to "Save as PDF".
 
 **Referral-log.pdf** — a fillable form. Tab moves date → NHI → Age/Sex → Name → notes → next box. Two pages of ten. Fields stop accepting text once a box is full, so nothing can be hidden below the visible area.
 
