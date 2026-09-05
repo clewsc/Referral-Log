@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en-NZ">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Referral log</title>
+<style>
+  :root{
+    /* anything written stays black -- survives photocopying and faxing */
+    --ink:#000;
+    /* structure: the dull process blue-green of a carbonless duplicate pad */
+    --frame:#2f5d6e;
+    --grid:#4d8194;
+    --label:#557a88;
+    --rule:#b7ced5;
+    --quiet:#7f9aa3;
+    /* accent earns its place: only ticks and warnings */
+    --accent:#a2452f;
+    /* screen only, never printed */
+    --paper:#fff;
+    --desk:#dfe4e3;
+    --entry-bg:#f3f5f5;
+    --field:#eaf1f4;
+    --field-focus:#d8e6ec;
+    --hint:#a2452f;
+    /* toolbar chrome */
+    --bar-bg:#fff;
+    --bar-line:#2f5d6e;
+    --bar-name:#2f5d6e;
+    --bar-muted:#7f9aa3;
+    --btn-face:#fff;
+    --btn-edge:#4d8194;
+    --btn-txt:#2f5d6e;
+    --btn-hover:#eaf1f4;
+    --accent-face:#2f5d6e;
+    --accent-txt:#fff;
+  }
+
+  /* Dark mode dims the paper rather than inverting it: the sheet still reads
+     as paper with black ink, so the screen keeps matching what prints.       */
+  body.dark{
+    --paper:#d7dad9;
+    /* structure darkened a touch to hold contrast against the dimmed sheet */
+    --grid:#3f6c7e;
+    --label:#456678;
+    --quiet:#5f7f8a;
+    --desk:#131f26;
+    --entry-bg:#131f26;
+    --field:#c7cfd0;
+    --field-focus:#b6c3c5;
+    --hint:#e08a72;
+    --bar-bg:#1b2b34;
+    --bar-line:#3d7183;
+    --bar-name:#a8c9d4;
+    --bar-muted:#7b98a2;
+    --btn-face:#22343d;
+    --btn-edge:#3d7183;
+    --btn-txt:#cfe2e8;
+    --btn-hover:#2c414c;
+    --accent-face:#6ea6b8;
+    --accent-txt:#10202a;
+  }
+
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%; text-size-adjust:100%}
+  body{
+    background:var(--desk);
+    font-family:Arial,Helvetica,sans-serif;
+    color:var(--ink);
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact;
+  }
+
+  /* ---------- toolbar ---------- */
+  .bar{
+    position:sticky; top:0; z-index:10;
+    display:flex; align-items:center; gap:10px;
+    padding:10px 16px;
+    background:var(--bar-bg);
+    border-bottom:2px solid var(--bar-line);
+    font-size:13px;
+    flex-wrap:wrap;
+  }
+  .bar .name{font-weight:700; color:var(--bar-name); letter-spacing:.01em}
+  .bar .count{color:var(--bar-muted)}
+  .bar .note{color:var(--quiet); margin-left:auto; margin-right:4px}
+  .bar button{
+    font:inherit; font-size:13px;
+    min-height:36px; padding:6px 12px;
+    border:1px solid var(--btn-edge);
+    background:var(--btn-face);
+    color:var(--btn-txt);
+    border-radius:3px;
+    cursor:pointer;
+  }
+  .bar button:hover:enabled{background:var(--btn-hover)}
+  .bar button:disabled{opacity:.4; cursor:default}
+  .bar button.primary{background:var(--accent-face); border-color:var(--accent-face); color:var(--accent-txt)}
+  .bar button.primary:hover:enabled{filter:brightness(1.15)}
+  .bar button:focus-visible,
+  input:focus-visible, textarea:focus-visible, .tick:focus-visible{
+    outline:2px solid var(--frame); outline-offset:1px;
+  }
+  /* compact two-state slider: the thumb sits under the active label */
+  .bar .switch{
+    position:relative; display:inline-flex; align-items:center;
+    height:34px; min-height:34px; padding:2px;
+    border:1px solid var(--btn-edge); border-radius:999px;
+    background:var(--btn-face); font-size:12px; overflow:hidden;
+  }
+  .bar .switch:hover:enabled{background:var(--btn-face)}
+  .bar .switch span{
+    position:relative; z-index:1;
+    width:58px; text-align:center; line-height:28px;
+    color:var(--btn-txt); transition:color .18s ease;
+  }
+  .bar .switch::before{
+    content:''; position:absolute; z-index:0;
+    top:2px; left:2px; width:58px; height:28px;
+    border-radius:999px; background:var(--accent-face);
+    transition:transform .18s ease;
+  }
+  .bar .switch[aria-checked="true"]::before{transform:translateX(58px)}
+  .bar .switch[aria-checked="false"] .s-sheet{color:var(--accent-txt)}
+  .bar .switch[aria-checked="true"]  .s-entry{color:var(--accent-txt)}
+  @media (prefers-reduced-motion:reduce){
+    .bar .switch::before, .bar .switch span{transition:none}
+  }
+
+  .dl{color:var(--bar-muted); font-size:13px; white-space:nowrap; margin-left:auto}
+  .dl a{color:var(--btn-txt); text-decoration:underline; text-underline-offset:2px}
+  .dl a:hover{color:var(--accent)}
+
+  /* page controls sit where you need them: after the last sheet */
+  .pagetools{
+    display:flex; justify-content:center; gap:10px;
+    padding:0 16px 48px; margin-top:-24px;
+  }
+  .pagetools button{
+    font:inherit; font-size:13px; min-height:36px; padding:6px 14px;
+    border:1px solid var(--btn-edge); background:var(--btn-face); color:var(--btn-txt);
+    border-radius:3px; cursor:pointer;
+  }
+  .pagetools button:hover:enabled{background:var(--btn-hover)}
+  .pagetools button:disabled{opacity:.4; cursor:default}
+  .pagetools button:focus-visible{outline:2px solid var(--frame); outline-offset:1px}
+
+  .bar .iconbtn{
+    width:34px; min-height:34px; padding:0;
+    display:inline-flex; align-items:center; justify-content:center;
+    border-radius:999px;
+  }
+  .bar .iconbtn svg{
+    width:17px; height:17px;
+    stroke:currentColor; fill:none;
+    stroke-width:1.7; stroke-linecap:round;
+  }
+  .bar .iconbtn .i-moon{fill:currentColor; stroke:none}
+  body:not(.dark) .i-sun{display:none}
+  body.dark .i-moon{display:none}
+
+  .hint{width:100%; margin:0; color:var(--hint); font-size:12px}
+  .hint:empty{display:none}
+
+  .sheets{padding:20px 0 40px}
+
+  /* ---------- the sheet (this is also exactly what prints) ---------- */
+  .page{
+    width:184.6mm;
+    height:265mm;          /* slack inside the 271.6mm printable area */
+    overflow:hidden;       /* content can never spill onto a second sheet */
+    margin:0 auto 20px;
+    background:var(--paper);
+    box-shadow:0 1px 5px rgba(47,93,110,.28);
+    display:flex; flex-direction:column;
+  }
+
+  .head{
+    height:10.58mm;
+    display:flex; align-items:flex-start; justify-content:space-between;
+    padding-top:1mm;
+  }
+  .title{font-size:11pt; font-weight:700; color:var(--frame); letter-spacing:.02em}
+  /* editable, but should read as a heading rather than a form field */
+  @media screen{
+    .title{border-radius:2px; padding:0 2px; margin-left:-2px; cursor:text}
+    .title:hover{background:var(--field)}
+    .title:focus{background:var(--field-focus); outline:none}
+    .title:focus-visible{outline:2px solid var(--frame); outline-offset:1px}
+    .title:empty::before{content:attr(data-placeholder); color:var(--quiet); font-weight:400}
+  }
+  .datewrap{display:flex; align-items:baseline; gap:3mm; font-size:10pt}
+  .datewrap span{color:var(--label)}
+  .datewrap input{
+    width:34mm; font-size:10pt;
+    border:0; border-bottom:.6pt solid var(--frame); border-radius:0;
+  }
+
+  .grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    grid-auto-rows:50mm;
+    border:.9pt solid var(--frame);
+    border-right:0; border-bottom:0;
+  }
+  .box{
+    border-right:.6pt solid var(--grid);
+    border-bottom:.6pt solid var(--grid);
+    padding:2.12mm;
+    display:flex; flex-direction:column;
+    overflow:hidden;
+  }
+
+  .fld{display:contents}          /* invisible wrapper in sheet layout */
+  .hdr1,.hdr2{display:flex; align-items:baseline; gap:2mm; font-size:7.5pt}
+  .hdr1{height:5.3mm}
+  .hdr2{height:5.9mm; border-bottom:.5pt solid var(--rule)}
+  .lbl{color:var(--label); white-space:nowrap}
+
+  .tick{
+    position:relative;
+    width:3mm; height:3mm;
+    border:.5pt solid var(--grid);
+    margin-left:auto; flex:none; align-self:center;
+    cursor:pointer; background:none; padding:0;
+  }
+  .tick:hover{border-color:var(--accent)}
+  .tick[aria-checked="true"]::after{
+    content:'';
+    position:absolute; left:.85mm; top:.15mm;
+    width:.9mm; height:1.8mm;
+    border:solid var(--accent); border-width:0 .6pt .6pt 0;
+    transform:rotate(45deg);
+  }
+  .tick-txt{display:none}
+
+  input,textarea{
+    font-family:inherit; color:var(--ink);
+    border:0; background:var(--field);
+    padding:0 .5mm; margin:0; border-radius:2px;
+  }
+  input:focus,textarea:focus{background:var(--field-focus)}
+  .hdr1 input,.hdr2 input{font-size:7.5pt; height:3.6mm}
+  .f-nhi{width:33mm; text-transform:uppercase}
+  .f-age{width:20mm}
+  .f-name{flex:1; min-width:0}
+
+  .details{
+    flex:1; width:100%;
+    margin-top:1mm;
+    font-size:8pt; line-height:1.15;
+    resize:none; overflow:hidden;
+  }
+  .meter{display:none}
+
+  @media screen{
+    .f-nhi.short{box-shadow:inset 0 -1.5px 0 var(--accent)}
+  }
+
+  .foot{
+    margin-top:auto;
+    display:grid;
+    grid-template-columns:1fr auto 1fr;
+    align-items:baseline;
+    font-size:6.5pt;
+    color:var(--quiet);
+    padding-top:.8mm;
+    border-top:.4pt solid var(--rule);
+  }
+  .foot .conf{grid-column:2}
+  .foot .pageno{grid-column:3; text-align:right; white-space:nowrap; color:var(--label)}
+
+  /* offscreen rulers that reproduce printed field geometry */
+  .ruler{
+    position:absolute; left:-99999px; top:0;
+    visibility:hidden; white-space:pre-wrap;
+    overflow-wrap:break-word; word-break:normal;
+    font-family:Arial,Helvetica,sans-serif;
+  }
+  /* 1mm narrower than the real field: a div and a textarea wrap slightly differently */
+  #r-details{width:86.0mm; font-size:8pt; line-height:1.15}
+  #r-line{white-space:pre; width:auto}
+
+  /* ================= ENTRY VIEW — screen only, never printed ================= */
+  @media screen{
+    body.view-entry{background:var(--entry-bg)}
+    body.view-entry .sheets{padding:14px 10px 48px}
+
+    body.view-entry .page{
+      width:100%; max-width:660px; height:auto;
+      overflow:visible; display:block;
+      margin:0 auto 26px; background:none; box-shadow:none;
+    }
+    body.view-entry .head{
+      height:auto; display:flex; flex-wrap:wrap; gap:10px;
+      align-items:baseline; padding:0 2px 10px;
+      border-bottom:2px solid var(--frame); margin-bottom:14px;
+    }
+    body.view-entry .title{font-size:17px; letter-spacing:0}
+    body.view-entry .datewrap{font-size:15px; gap:8px; margin-left:auto}
+    body.view-entry .datewrap input{
+      width:130px; font-size:16px; height:36px;
+      background:var(--field); border-bottom:1px solid var(--frame);
+      padding:0 6px;
+    }
+
+    body.view-entry .grid{display:block; border:0}
+    body.view-entry .box{
+      display:block; overflow:visible;
+      background:var(--paper); border:1px solid var(--grid); border-radius:7px;
+      padding:12px; margin:0 0 12px;
+    }
+
+    body.view-entry .hdr1,
+    body.view-entry .hdr2{
+      display:flex; flex-wrap:wrap; gap:10px;
+      height:auto; border:0; font-size:13px; margin-bottom:10px;
+    }
+    body.view-entry .fld{
+      display:flex; align-items:center; gap:8px;
+      flex:1 1 190px; min-width:0;
+    }
+    body.view-entry .lbl{color:var(--label); font-size:13px; flex:none}
+    body.view-entry .hdr1 input,
+    body.view-entry .hdr2 input{
+      font-size:16px; height:40px; padding:0 8px;
+      flex:1 1 auto; width:auto; min-width:0;
+      border:1px solid var(--rule); border-radius:4px;
+    }
+
+    body.view-entry .tick{
+      width:auto; height:40px; flex:none;
+      margin-left:0; align-self:center;
+      padding:0 14px 0 34px;
+      border:1px solid var(--grid); border-radius:4px;
+      color:var(--label); font-size:14px;
+    }
+    body.view-entry .tick-txt{display:inline}
+    body.view-entry .tick::before{
+      content:''; position:absolute; left:11px; top:50%;
+      width:15px; height:15px; margin-top:-8px;
+      border:1px solid var(--grid); border-radius:2px;
+    }
+    body.view-entry .tick[aria-checked="true"]{
+      border-color:var(--accent); color:var(--accent);
+    }
+    body.view-entry .tick[aria-checked="true"]::after{
+      left:16px; top:12px; margin:0;
+      width:5px; height:10px;
+      border-width:0 2px 2px 0;
+    }
+
+    body.view-entry .details{
+      font-size:16px; line-height:1.45;
+      min-height:150px; margin-top:0;
+      overflow:auto; padding:8px;
+      border:1px solid var(--rule); border-radius:4px;
+    }
+    body.view-entry .meter{
+      display:block; text-align:right;
+      font-size:12px; color:var(--quiet); padding-top:5px;
+    }
+    body.view-entry .meter.full{color:var(--accent)}
+
+    body.view-entry .foot{
+      border:0; padding-top:8px; font-size:12px;
+      grid-template-columns:1fr auto;
+    }
+    body.view-entry .foot .conf{grid-column:1; text-align:left}
+    body.view-entry .foot .pageno{grid-column:2}
+  }
+
+  /* ---------- print: always the sheet, whichever view is on screen ---------- */
+  @page{ size:A4; margin:12.7mm }
+
+  @media print{
+    /* the theme is a screen comfort setting only: paper always prints light */
+    :root, body.dark{
+      --paper:#fff; --desk:#fff; --entry-bg:#fff;
+      --field:transparent; --field-focus:transparent;
+    }
+    body, body.dark{background:#fff}
+    .page{background:#fff !important}
+    .bar,.pagetools{display:none}
+    .sheets{padding:0}
+    .page{
+      width:auto; height:265mm;
+      margin:0; box-shadow:none;
+      display:block;                       /* not flex: see below */
+      break-after:page; page-break-after:always;
+      break-inside:avoid; page-break-inside:avoid;
+    }
+    .foot{margin-top:0}
+    .page:last-of-type{break-after:auto; page-break-after:auto}
+    input,textarea{background:transparent !important}
+    input:focus,textarea:focus,.title:focus,*:focus-visible{
+      outline:none !important; box-shadow:none !important;
+    }
+    .datewrap input{border-bottom:.6pt solid var(--frame)}
+
+    /* iOS Safari renders absolute units about 19% larger when printing, so a
+       265mm sheet lands at ~315mm and fragments. Declaring less makes the
+       printed result come out the right size. Factor measured at 1.189 from
+       two real iOS exports; these two numbers are the dial if it shifts.
+       Measured limits from real exports: content breaks below ~271mm, and
+       200mm/251.9mm printed clean. This sits at 261.4mm, ~10mm clear.       */
+    body.ios .page{height:var(--ios-page,208mm)}
+    body.ios .grid{grid-auto-rows:var(--ios-row,38.8mm)}
+    /* a slimmer header strip buys back a line of notes without making the
+       sheet taller, which is the dimension that breaks */
+    body.ios .hdr1{height:4.8mm}
+    body.ios .hdr2{height:5.4mm}
+  }
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <span class="name">Referral log</span>
+  <span class="count" id="count">0 of 20 boxes used</span>
+  <span class="dl">Blank form:
+    <a href="Referral-log.docx" download>Word</a><span aria-hidden="true"> &middot; </span><a href="Referral-log.pdf" download>PDF</a>
+  </span>
+  <button type="button" id="theme" class="iconbtn" aria-pressed="false"
+          aria-label="Switch to dark mode" title="Dark mode">
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path class="i-moon" d="M20.2 14.8A8.6 8.6 0 0 1 9.2 3.8a8.6 8.6 0 1 0 11 11z"/>
+      <g class="i-sun"><circle cx="12" cy="12" r="4.1"/><path d="M12 2.2v2.5M12 19.3v2.5M2.2 12h2.5M19.3 12h2.5M5.1 5.1l1.8 1.8M17.1 17.1l1.8 1.8M18.9 5.1l-1.8 1.8M6.9 17.1l-1.8 1.8"/></g>
+    </svg>
+  </button>
+  <button type="button" id="view" class="switch" role="switch" aria-checked="false"
+          aria-label="Entry view"><span class="s-sheet">Sheet</span><span class="s-entry">Entry</span></button>
+  <button type="button" id="clear">Clear all</button>
+  <button type="button" id="export">Export PDF</button>
+  <button type="button" id="print" class="primary">Print</button>
+  <p class="hint" id="hint" role="status"></p>
+</div>
+
+<div class="sheets" id="sheets"></div>
+
+<div class="pagetools" id="pagetools">
+  <button type="button" id="add">Add a page</button>
+  <button type="button" id="remove">Remove last page</button>
+</div>
+
+<div class="ruler" id="r-details" aria-hidden="true"></div>
+<span class="ruler" id="r-line" aria-hidden="true"></span>
+<div class="ruler" id="r-probe" style="width:100mm" aria-hidden="true"></div>
+
+<template id="page-tpl">
+  <section class="page">
+    <div class="head">
+      <div class="title" contenteditable="true" tabindex="-1" role="textbox"
+           spellcheck="false" aria-label="Log title">Referral log</div>
+      <div class="datewrap"><span>Date:</span><input type="text" aria-label="Date"></div>
+    </div>
+    <div class="grid"></div>
+    <div class="foot">
+      <span class="conf">Contains patient information — dispose in confidential waste</span>
+      <span class="pageno"></span>
+    </div>
+  </section>
+</template>
+
+<template id="box-tpl">
+  <div class="box">
+    <div class="hdr1">
+      <span class="fld"><span class="lbl">NHI</span>
+        <input type="text" class="f-nhi" maxlength="7" autocapitalize="characters"
+               autocomplete="off" spellcheck="false" aria-label="NHI"></span>
+      <span class="fld"><span class="lbl">Age / Sex</span>
+        <input type="text" class="f-age" autocomplete="off" aria-label="Age and sex"></span>
+      <button type="button" class="tick" tabindex="-1" role="checkbox"
+              aria-checked="false" aria-label="Reviewed" title="Reviewed"><span class="tick-txt">Reviewed</span></button>
+    </div>
+    <div class="hdr2">
+      <span class="fld"><span class="lbl">Name</span>
+        <input type="text" class="f-name" autocomplete="off" aria-label="Name"></span>
+    </div>
+    <textarea class="details" maxlength="900" aria-label="Referral details"></textarea>
+    <div class="meter"><span class="used">0</span> of <span class="cap">10</span> lines</div>
+  </div>
+</template>
+
+<script>
+(function(){
+  const BOXES_PER_PAGE = 10;
+  const NHI_LEN   = 7;   // NZ NHI: 3 letters + 4 digits, or the newer alphanumeric form
+  const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                 (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if(IS_IOS) document.body.classList.add('ios');
+  /* iOS prints larger type into a shorter box, so fewer lines survive there */
+  const MAX_LINES = IS_IOS ? 7 : 10;
+
+  const sheets  = document.getElementById('sheets');
+  const pageTpl = document.getElementById('page-tpl');
+  const boxTpl  = document.getElementById('box-tpl');
+  const hintEl  = document.getElementById('hint');
+  const countEl = document.getElementById('count');
+  const removeBtn = document.getElementById('remove');
+  const viewBtn = document.getElementById('view');
+
+  const rDet   = document.getElementById('r-details');
+  const rLine  = document.getElementById('r-line');
+  const MM     = document.getElementById('r-probe').offsetWidth / 100;   // px per mm
+
+  /* Printed field geometry. Measured against these rulers rather than against
+     the on-screen element, so the limits are identical in both views.        */
+  const BOX_INNER = 88.06 * MM;
+  const GAP       = 2 * MM;
+  const PAD       = 1 * MM;
+  let LINE_PX = 0, NAME_W = 0, AGE_W = 0, DATE_W = 0;
+  const TITLE_W = 125 * MM;   // header width less the date field
+
+  function textW(str, sizePt, weight){
+    rLine.style.fontSize = sizePt + 'pt';
+    rLine.style.fontWeight = weight || '400';
+    rLine.textContent = str;
+    return rLine.offsetWidth;
+  }
+  function calibrate(){
+    rDet.textContent = 'M';
+    LINE_PX = rDet.offsetHeight;
+    NAME_W  = BOX_INNER - textW('Name', 7.5) - GAP - PAD;
+    AGE_W   = 20 * MM - PAD;
+    DATE_W  = 34 * MM - PAD;
+  }
+  calibrate();
+
+  const linesUsed = v => {
+    rDet.textContent = v + '\u200b';
+    return Math.max(1, Math.round(rDet.offsetHeight / LINE_PX));
+  };
+
+  /* Trim to what the printed box holds. Binary search, so a big paste
+     costs a handful of measurements rather than one per character.     */
+  function fitToPrint(el, ok){
+    const full = el.value;
+    if(ok(full)) return false;
+    let lo = 0, hi = full.length;
+    while(lo < hi){
+      const mid = Math.ceil((lo + hi) / 2);
+      if(ok(full.slice(0, mid))) lo = mid; else hi = mid - 1;
+    }
+    el.value = full.slice(0, lo);
+    return true;
+  }
+
+  function guardDetails(ta, meter){
+    const update = () => {
+      const n = linesUsed(ta.value);
+      meter.querySelector('.used').textContent = n;
+      meter.querySelector('.cap').textContent = MAX_LINES;
+      meter.classList.toggle('full', n >= MAX_LINES);
+    };
+    ta.addEventListener('input', () => {
+      const pos = ta.selectionStart;
+      if(fitToPrint(ta, v => linesUsed(v) <= MAX_LINES)){
+        const p = Math.min(pos, ta.value.length);
+        ta.setSelectionRange(p, p);
+      }
+      update();
+    });
+    update();
+  }
+
+  function guardLine(el, widthPx, sizePt){
+    el.addEventListener('input', () => {
+      const pos = el.selectionStart;
+      if(fitToPrint(el, v => textW(v, sizePt) <= widthPx)){
+        const p = Math.min(pos, el.value.length);
+        el.setSelectionRange(p, p);
+      }
+    });
+  }
+
+  const pages = () => sheets.querySelectorAll('.page');
+  const boxes = () => sheets.querySelectorAll('.box');
+  const hint  = m => { hintEl.textContent = m || ''; };
+
+  function boxUsed(box){
+    const filled = [...box.querySelectorAll('input, textarea')].some(f => f.value.trim());
+    return filled || box.querySelector('.tick').getAttribute('aria-checked') === 'true';
+  }
+  const anyContent = () => [...boxes()].some(boxUsed) ||
+    [...sheets.querySelectorAll('.datewrap input')].some(f => f.value.trim());
+
+  function refresh(){
+    const list = pages();
+    list.forEach((p, i) => {
+      p.querySelector('.pageno').textContent = `Page ${i + 1} of ${list.length}`;
+    });
+    countEl.textContent =
+      `${[...boxes()].filter(boxUsed).length} of ${boxes().length} boxes used`;
+    removeBtn.disabled = list.length <= 1;
+  }
+
+  function addPage(){
+    const page = pageTpl.content.firstElementChild.cloneNode(true);
+    const grid = page.querySelector('.grid');
+    for(let i = 0; i < BOXES_PER_PAGE; i++){
+      const box = boxTpl.content.firstElementChild.cloneNode(true);
+
+      guardDetails(box.querySelector('.details'), box.querySelector('.meter'));
+      guardLine(box.querySelector('.f-name'), NAME_W, 7.5);
+      guardLine(box.querySelector('.f-age'),  AGE_W,  7.5);
+
+      const nhi = box.querySelector('.f-nhi');
+      nhi.addEventListener('input', () => {
+        const p = nhi.selectionStart;
+        nhi.value = nhi.value.toUpperCase();
+        nhi.setSelectionRange(p, p);
+        nhi.classList.remove('short');
+      });
+
+      const tick = box.querySelector('.tick');
+      tick.addEventListener('click', () => {
+        tick.setAttribute('aria-checked',
+          tick.getAttribute('aria-checked') === 'true' ? 'false' : 'true');
+        refresh();
+      });
+
+      grid.appendChild(box);
+    }
+    const title = page.querySelector('.title');
+    title.textContent = currentTitle;
+    title.dataset.placeholder = DEFAULT_TITLE;
+    wireTitle(title);
+    guardLine(page.querySelector('.datewrap input'), DATE_W, 10);
+    sheets.appendChild(page);
+    refresh();
+    return page;
+  }
+
+  function preflight(){
+    const short = [...sheets.querySelectorAll('.f-nhi')]
+      .filter(f => f.value.length > 0 && f.value.length < NHI_LEN);
+    sheets.querySelectorAll('.f-nhi.short').forEach(f => f.classList.remove('short'));
+    if(!short.length) return true;
+    short.forEach(f => f.classList.add('short'));
+    short[0].scrollIntoView({block:'center'});
+    const n = short.length;
+    return confirm(
+      `${n} NHI ${n === 1 ? 'entry looks' : 'entries look'} incomplete ` +
+      `(fewer than ${NHI_LEN} characters). Continue anyway?`
+    );
+  }
+
+  /* ---- the heading is editable; every sheet carries the same one ---- */
+  const DEFAULT_TITLE = 'Referral log';
+  let currentTitle = DEFAULT_TITLE;
+
+  function wireTitle(el){
+    el.addEventListener('keydown', e => {
+      if(e.key === 'Enter'){ e.preventDefault(); el.blur(); }
+    });
+    el.addEventListener('paste', e => {          // never let styled text in
+      e.preventDefault();
+      const t = (e.clipboardData || window.clipboardData).getData('text')
+                  .replace(/\s+/g, ' ').trim();
+      document.execCommand('insertText', false, t);
+    });
+    el.addEventListener('input', () => {
+      let v = el.textContent.replace(/\n/g, ' ');
+      if(textW(v, 11, '700') > TITLE_W){          // keep it inside the header
+        while(v.length && textW(v, 11, '700') > TITLE_W) v = v.slice(0, -1);
+        el.textContent = v;
+        const r = document.createRange(), sel = getSelection();
+        r.selectNodeContents(el); r.collapse(false);
+        sel.removeAllRanges(); sel.addRange(r);
+      }
+      currentTitle = v;
+      document.querySelectorAll('.title').forEach(t => {
+        if(t !== el) t.textContent = v;
+      });
+      const shown = v.trim() || DEFAULT_TITLE;
+      document.querySelector('.bar .name').textContent = shown;
+      document.title = shown;
+    });
+    el.addEventListener('blur', () => {
+      if(!el.textContent.trim()){
+        currentTitle = DEFAULT_TITLE;
+        document.querySelectorAll('.title').forEach(t => t.textContent = DEFAULT_TITLE);
+        document.querySelector('.bar .name').textContent = DEFAULT_TITLE;
+        document.title = DEFAULT_TITLE;
+      }
+    });
+  }
+
+  /* ---- theme: follows the device, with a manual override ---- */
+  const themeBtn = document.getElementById('theme');
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
+  let themeOverride = null;                 // null = follow the device
+
+  function applyTheme(){
+    const dark = themeOverride === null ? prefersDark.matches : themeOverride;
+    document.body.classList.toggle('dark', dark);
+    themeBtn.setAttribute('aria-pressed', String(dark));
+    themeBtn.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
+    themeBtn.title = dark ? 'Light mode' : 'Dark mode';
+  }
+  applyTheme();
+  prefersDark.addEventListener('change', () => { if(themeOverride === null) applyTheme(); });
+  themeBtn.addEventListener('click', () => {
+    themeOverride = !document.body.classList.contains('dark');
+    applyTheme();
+  });
+
+  /* ---- view toggle: entry view by default on small screens ---- */
+  function setView(mode){
+    const entry = mode === 'entry';
+    document.body.classList.toggle('view-entry', entry);
+    viewBtn.setAttribute('aria-checked', entry);
+    viewBtn.setAttribute('aria-label', entry ? 'Entry view, switch to sheet view'
+                                             : 'Sheet view, switch to entry view');
+  }
+  setView(window.innerWidth < 820 ? 'entry' : 'sheet');
+  viewBtn.addEventListener('click', () => {
+    hint('');
+    setView(document.body.classList.contains('view-entry') ? 'sheet' : 'entry');
+  });
+
+  document.getElementById('print').addEventListener('click', () => {
+    hint(''); if(preflight()) window.print();
+  });
+  document.getElementById('export').addEventListener('click', () => {
+    if(!preflight()) return;
+    hint('In the dialog, set Destination to "Save as PDF". On a phone, use the share menu.');
+    setTimeout(() => window.print(), 60);
+  });
+  document.getElementById('add').addEventListener('click', () => {
+    hint(''); addPage().scrollIntoView({behavior:'smooth', block:'start'});
+  });
+  removeBtn.addEventListener('click', () => {
+    hint('');
+    const list = pages();
+    if(list.length <= 1) return;
+    const last = list[list.length - 1];
+    if([...last.querySelectorAll('.box')].some(boxUsed) &&
+       !confirm('The last page has entries on it. Remove it anyway?')) return;
+    last.remove(); refresh();
+  });
+  document.getElementById('clear').addEventListener('click', () => {
+    hint('');
+    if(!anyContent()) return;
+    if(!confirm('Clear every entry on all pages? This cannot be undone.')) return;
+    sheets.querySelectorAll('input, textarea').forEach(f => f.value = '');
+    sheets.querySelectorAll('.tick').forEach(t => t.setAttribute('aria-checked','false'));
+    sheets.querySelectorAll('.f-nhi.short').forEach(f => f.classList.remove('short'));
+    sheets.querySelectorAll('.meter').forEach(m => {
+      m.querySelector('.used').textContent = '0'; m.classList.remove('full');
+    });
+    refresh();
+    sheets.querySelector('input').focus();
+  });
+
+  sheets.addEventListener('input', refresh);
+
+  window.addEventListener('beforeunload', e => {
+    if(!anyContent()) return;
+    e.preventDefault(); e.returnValue = '';
+  });
+
+  addPage();
+  addPage();
+})();
+</script>
+</body>
+</html>
