@@ -1,8 +1,9 @@
 # Referral-Log
 <p>Referral log HTML interface, with easy print/PDF and template download.</p>
-<p>A one-page A4 log for recording referrals to the on-call registrar. Ten boxes per sheet, two columns of five, each with a small header strip for NHI, Age/Sex and Name, a tick box for marking a referral reviewed, and space for notes. Designed to be printed blank and filled in by pen, with typed entry available where it's useful.</p>
+<p>Generate an A4 log for recording referrals to the on-call registrar. Ten boxes per sheet, two columns of five, each with a small header strip for NHI, Age/Sex and Name, a tick box for marking a referral reviewed, and space for notes. Designed to be printed blank and filled in by pen, with typed entry available where it's useful.</p>
 <p>The title is generic so any service can use it. In the HTML version it's editable — click the heading and type.</p>
 <p>Users can also add a simple "notes" page with more compact boxes for simple tasks.</p>
+<p>Built in links to download static Word (docx) and PDF versions for ease of access or sharing.</p>
 
 ## The three files
 
